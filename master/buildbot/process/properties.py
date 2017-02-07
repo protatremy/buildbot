@@ -12,11 +12,7 @@
 # Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 #
 # Copyright Buildbot Team Members
-
-from __future__ import absolute_import
-from __future__ import print_function
 from future.builtins import range
-from future.utils import PY3
 from future.utils import iteritems
 
 import collections
@@ -93,10 +89,8 @@ class Properties(util.ComparableMixin):
         rv = self.properties[name][0]
         return rv
 
-    def __bool__(self):
-        return bool(self.properties)
-    if not PY3:
-        __nonzero__ = __bool__
+    def __nonzero__(self):
+        return not not self.properties
 
     def getPropertySource(self, name):
         return self.properties[name][1]
@@ -384,6 +378,8 @@ class _Lookup(util.ComparableMixin, object):
     def getRenderingFor(self, build):
         value = build.render(self.value)
         index = build.render(self.index)
+        print "[DEBUG]_Lookup value:", value
+        print "[DEBUG]_Lookup index", index
         value, index = yield defer.gatherResults([value, index])
         if index not in value:
             rv = yield build.render(self.default)
@@ -400,6 +396,7 @@ class _Lookup(util.ComparableMixin, object):
                 rv = yield build.render(value[index])
         if rv is None:
             rv = yield build.render(self.elideNoneAs)
+        print "[DEBUG] _lookup getRenderingFor will return %s for key%s" % (rv, value)
         defer.returnValue(rv)
 
 
@@ -418,6 +415,28 @@ class _PropertyDict(object):
 
 
 _thePropertyDict = _PropertyDict()
+
+
+@implementer(IRenderable)
+class _SecretRenderer(object):
+
+    def __init__(self, secret_name):
+        self.secret_name = secret_name
+
+    def getRenderingFor(self, build):
+        print "[[DEBUG]]dir(self)", dir(self)
+        credsservice = build.getBuild().master.namedServices['secrets']
+        return credsservice.get(self.secret_name)
+
+
+class _SecretIndexer(object):
+
+    def __contains__(self, password):
+        return True
+
+    def __getitem__(self, password):
+        print "[DEBUG] password in getiem:", password
+        return _SecretRenderer(password)
 
 
 @implementer(IRenderable)
@@ -517,8 +536,18 @@ class Interpolate(util.ComparableMixin, object):
 
         # Report in proper place with typical stack trace...
         _on_property_usage(prop, stacklevel=4)
+        print "[DEBUG] _thePropertyDict!", _thePropertyDict
 
         return _thePropertyDict, prop, repl
+
+    @staticmethod
+    def _parse_secrets(arg):
+        try:
+            secret, repl = arg.split(":", 1)
+        except ValueError:
+            secret, repl = arg, None
+        print "[DEBUG] just before render _SecretIndexer"
+        return _SecretIndexer(), secret.decode('utf8'), repl
 
     @staticmethod
     def _parse_src(arg):
@@ -564,6 +593,7 @@ class Interpolate(util.ComparableMixin, object):
             return
 
         fn = getattr(self, "_parse_" + key, None)
+        print "[DEBUG] fn in _parseSubstitution:", fn
         if not fn:
             config.error("invalid Interpolate selector '%s'" % key)
             return None
@@ -624,10 +654,14 @@ class Interpolate(util.ComparableMixin, object):
         return self._parseColon_ternary(d, kw, repl, defaultWhenFalse=True)
 
     def _parse(self, fmtstring):
+        print "[DEBUG] fmtstring", fmtstring
         keys = _getInterpolationList(fmtstring)
+        print "[DEBUG] keys", keys
         for key in keys:
             if key not in self.interpolations:
+                print "[DEBUG] key in parse", key
                 d, kw, repl = self._parseSubstitution(key)
+                print "[DEBUG] parseSustitution d:%s, kw:%s, repl:%s" % (d, kw, repl)
                 if repl is None:
                     repl = '-'
                 for pattern, fn in [
@@ -638,15 +672,18 @@ class Interpolate(util.ComparableMixin, object):
                     ("#?", self._parseColon_ternary_hash)
                 ]:
                     junk, matches, tail = repl.partition(pattern)
+                    print "[DEBUG]key:%s matches:junk%s, matches:%s, tail%s" % (key, junk, matches, tail)
                     if not junk and matches:
                         self.interpolations[key] = fn(d, kw, tail)
+                        print "[DEBUG] break is OK"
                         break
                 if key not in self.interpolations:
                     config.error(
                         "invalid Interpolate default type '%s'" % repl[0])
 
-    def getRenderingFor(self, props):
-        props = props.getProperties()
+    def getRenderingFor(self, build):
+        props = build.getProperties()
+        self.build = build
         if self.args:
             d = props.render(self.args)
             d.addCallback(lambda args:
@@ -815,7 +852,7 @@ registerAdapter(_TupleRenderer, tuple, IRenderable)
 class _DictRenderer(object):
 
     """
-    Dict IRenderable adaptor. Maps Build.render over the keys and values in the dict.
+    Dict IRenderable adaptor. Maps Build.render over the keya and values in the dict.
     """
 
     def __init__(self, value):

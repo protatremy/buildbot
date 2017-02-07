@@ -272,6 +272,7 @@ setup_args = {
                 'Mock', 'MockBuildSRPM', 'MockRebuild']),
             ('buildbot.steps.package.rpm.rpmbuild', ['RpmBuild']),
             ('buildbot.steps.package.rpm.rpmspec', ['RpmSpec']),
+            ('buildbot.steps.populate_secrets', ['PopulateSecrets']),
             ('buildbot.steps.python', [
                 'BuildEPYDoc', 'PyFlakes', 'PyLint', 'Sphinx']),
             ('buildbot.steps.python_twisted', [
@@ -362,6 +363,9 @@ setup_args = {
             ('buildbot.process.results', [
                 'Results', 'SUCCESS', 'WARNINGS', 'FAILURE', 'SKIPPED',
                 'EXCEPTION', 'RETRY', 'CANCELLED']),
+            ('buildbot.secrets.provider.file', ['SecretInAFile']),
+            ('buildbot.secrets.provider.vault', ['SecretInVault']),
+            ('buildbot.secrets.provider.dictionary', ['SecretInADict']),
             ('buildbot.steps.mtrlogobserver', ['EqConnectionPool']),
             ('buildbot.steps.source.repo', [
                 ('repo.DownloadsFromChangeSource',

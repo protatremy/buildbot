@@ -1,0 +1,72 @@
+# This file is part of Buildbot.  Buildbot is free software: you can
+# redistribute it and/or modify it under the terms of the GNU General Public
+# License as published by the Free Software Foundation, version 2.
+#
+# This program is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+# FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more
+# details.
+#
+# You should have received a copy of the GNU General Public License along with
+# this program; if not, write to the Free Software Foundation, Inc., 51
+# Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+#
+# Copyright Buildbot Team Members
+"""
+vault based providers
+"""
+
+from __future__ import absolute_import
+from __future__ import print_function
+
+import hvac
+from buildbot import config
+from buildbot.secrets.provider.base import SecretProviderBase
+
+
+class SecretInVault(SecretProviderBase):
+    """
+    basic provider where each secret is stored in Vault
+    """
+    name = 'SecretInVault'
+
+    def checkConfig(self, vaultServer=None, vaultToken=None):
+        if not isinstance(vaultServer, str):
+            config.error("vaultServer must be a string while it is %r" % (type(vaultServer,)))
+            return
+        if not isinstance(vaultToken, str):
+            config.error("vaultToken must be a string while it is %d" % (type(vaultToken,)))
+            return
+        self.vaultServer = vaultServer
+        self.token = vaultToken
+        self.client = hvac.Client(url=vaultServer, token=vaultToken)
+
+    def reconfigService(self, vaultServer=None, vaultToken=None):
+        self.vaultServer = vaultServer
+        self.token = vaultToken
+        self.client = hvac.Client(url=vaultServer, token=vaultToken)
+
+    def get(self, entry):
+        """
+        get the value from vault secret backend
+        """
+        secret = self.client.read('secret/' + entry)
+        if 'data' not in secret.keys():
+            raise ValueError('No data value in Vault secrets')
+        if "value" not in secret["data"].keys():
+            raise ValueError("No value for Vault secret")
+        return secret["data"]["value"], None
+
+    def create(self, entry, secret):
+        """
+        set the secret value in vault secret backend
+        """
+        secretkey = 'secret/' + entry
+        self.client.write(secretkey, password=secret)
+        return entry, None
+
+    def delete(self, entry):
+        """
+        Delete the value of an entry in the secret vault backend
+        """
+        self.client.delete('secret/' + entry)
