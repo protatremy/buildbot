@@ -424,7 +424,6 @@ class _SecretRenderer(object):
         self.secret_name = secret_name
 
     def getRenderingFor(self, build):
-        print "[[DEBUG]]dir(self)", dir(self)
         credsservice = build.getBuild().master.namedServices['secrets']
         return credsservice.get(self.secret_name)
 

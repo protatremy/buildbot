@@ -25,17 +25,33 @@ from buildbot.test.util.integration import RunMasterBase
 class SecretsConfig(RunMasterBase):
 
     @defer.inlineCallbacks
-    def test_secret(self):
+    def test_secret_in_vault(self):
         yield self.setupConfig(masterConfig())
 
         change = dict(branch="master",
                       files=["foo.c"],
                       author="me@foo.com",
-                  comments="good stuff",
+                      comments="good stuff",
                       revision="HEAD",
                       project="none"
                       )
-        build = yield self.doForceBuild(wantSteps=True, useChange=change, wantLogs=True)
+        build = yield self.doForceBuild(wantSteps=True, useChange=change,
+                                        wantLogs=True)
+        self.assertEqual(build['buildid'], 1)
+
+    @defer.inlineCallbacks
+    def test_secret_in_dictionary(self):
+        yield self.setupConfig(masterConfig())
+
+        change = dict(branch="master",
+                      files=["foo.c"],
+                      author="me@foo.com",
+                      comments="good stuff",
+                      revision="HEAD",
+                      project="none"
+                      )
+        build = yield self.doForceBuild(wantSteps=True, useChange=change,
+                                        wantLogs=True)
         self.assertEqual(build['buildid'], 1)
 
 
@@ -50,15 +66,13 @@ def masterConfig():
         schedulers.AnyBranchScheduler(
             name="sched",
             builderNames=["testy"])]
-    c['secretsManagers'] = [util.SecretInVault(
-        vaultToken="8e77569d-0c39-2219-dfdf-7389a7bfe020",
-        vaultServer="http://localhost:8200"
-    )]
+    c['secretsManagers'] = [util.SecretInADict({"foo": "bar",
+                                                "other": "value"})]
 
     f = BuildFactory()
-    f.addStep(steps.PopulateSecrets(["password", "password2"]))
+    f.addStep(steps.PopulateSecrets(["foo", "other"]))
     f.addStep(ShellCommand(command=[Interpolate(
-        'echo %(secrets:userpassword)s'), Interpolate('echo %(prop:password2)s')]))
+        'echo %(secrets:foo)s'), Interpolate('echo %(prop:other)s')]))
 
     c['builders'] = [
         BuilderConfig(name="testy",

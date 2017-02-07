@@ -49,6 +49,7 @@ from buildbot.process import metrics
 from buildbot.process.botmaster import BotMaster
 from buildbot.process.builder import BuilderControl
 from buildbot.process.users.manager import UserManagerManager
+from buildbot.secrets.manager import SecretManager
 from buildbot.schedulers.manager import SchedulerManager
 from buildbot.status.master import Status
 from buildbot.util import ascii2unicode
@@ -151,6 +152,9 @@ class BuildMaster(service.ReconfigurableServiceMixin, service.MasterService,
         self.metrics = metrics.MetricLogObserver()
         self.metrics.setServiceParent(self)
 
+        self.secrets = SecretManager()
+        self.secrets.setServiceParent(self)
+ 
         self.caches = cache.CacheManager()
         self.caches.setServiceParent(self)
 
