@@ -209,6 +209,8 @@ class FakeMaster(service.MasterService):
 def make_master(wantMq=False, wantDb=False, wantData=False,
                 testcase=None, url=None, **kwargs):
     master = FakeMaster(**kwargs)
+    print("master created")
+
     if url:
         master.buildbotURL = url
     if wantData:
@@ -223,4 +225,5 @@ def make_master(wantMq=False, wantDb=False, wantData=False,
         master.db.setServiceParent(master)
     if wantData:
         master.data = fakedata.FakeDataConnector(master, testcase)
+    print("master config:", master.config)
     return master

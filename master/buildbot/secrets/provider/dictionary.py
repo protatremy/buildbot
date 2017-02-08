@@ -38,6 +38,7 @@ class SecretInADict(SecretProviderBase):
         """
         get the value from the dictionary identified by 'key'
         """
+        print("[DEB8G]")
         if key not in self.dictSecrets:
             return None, None
         return self.dictSecrets[key], None
