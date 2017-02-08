@@ -17,9 +17,9 @@ class FakeSecretStorage(SecretProviderBase):
 
     def get(self, key):
         if key in self.allsecrets:
-            return self.allsecrets[key]
+            return self.allsecrets[key], None
         else:
-            return None
+            return None, None
 
 
 class OtherFakeSecretStorage(FakeSecretStorage):
