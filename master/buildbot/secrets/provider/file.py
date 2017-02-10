@@ -31,27 +31,20 @@ class SecretInAFile(SecretProviderBase):
     """
     name = "SecretInAFile"
 
-    def checkConfig(self, name, dirname, ext=None):
+    def checkConfig(self, name, dirname):
         if dirname is None:
             config.error("directory name could not be empty")
-        self._ext = ext
 
-    def reconfigService(self, name, dirname, ext=None):
+    def reconfigService(self, name, dirname):
         self._dirname = dirname
-        self._ext = ext
 
     def get(self, entry):
         """
         get the value from the file identified by 'entry'
         """
         filename = os.path.join(self._dirname, entry)
-        if self._ext:
-            filename += self._ext
-
         assert os.path.isfile(filename), \
             'File {} does not exist'.format(filename)
-
         with open(filename) as source:
             secret = source.read().strip()
-
-        return secret, None
+        return secret

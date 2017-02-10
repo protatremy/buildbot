@@ -17,6 +17,7 @@ from __future__ import absolute_import
 from __future__ import print_function
 
 import os
+from tempfile import mkstemp
 
 import mock
 
@@ -31,7 +32,7 @@ class TestSecretInFile(ConfigErrorsMixin, unittest.TestCase):
 
     @defer.inlineCallbacks
     def setUp(self):
-        self.srvfile = SecretInAFile("name", "/path/todirname", ext=None)
+        self.srvfile = SecretInAFile("name", "/path/todirname")
         yield self.srvfile.startService()
 
     @defer.inlineCallbacks
@@ -44,16 +45,17 @@ class TestSecretInFile(ConfigErrorsMixin, unittest.TestCase):
 
     def testCheckConfigErrorSecretInAFileService(self):
         self.assertRaisesConfigError("directory name could not be empty",
-         lambda: self.srvfile.checkConfig("name2", None, ext=None))
+         lambda: self.srvfile.checkConfig("name2", None))
 
     @defer.inlineCallbacks
     def testReconfigSecretInAFileService(self):
-        yield self.srvfile.reconfigService("name2", "/path/todirname2", ext=None)
+        yield self.srvfile.reconfigService("name2", "/path/todirname2")
         self.assertEqual(self.srvfile.name, "SecretInAFile")
         self.assertEqual(self.srvfile._dirname, "/path/todirname2")
 
     def testGetFile(self):
-        self.mktemp -->> a voir pour eviter le mock
-        os.path.isfile = mock.Mock(True)
-        open = mock.Mock("something")
-        value = self.srvfile.get("kiki")
+        (fd, name) = mkstemp()
+        os.write(fd, 'key value')
+        value = self.srvfile.get(name)
+        self.assertEqual(value, "key value")
+        os.close(fd)
