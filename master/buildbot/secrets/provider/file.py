@@ -15,8 +15,12 @@
 """
 file based providers
 """
+from __future__ import absolute_import
+from __future__ import print_function
+
 import os
 
+from buildbot import config
 from buildbot.secrets.provider.base import SecretProviderBase
 
 
@@ -28,12 +32,11 @@ class SecretInAFile(SecretProviderBase):
     name = "SecretInAFile"
 
     def checkConfig(self, name, dirname, ext=None):
-        super(SecretInAFile, self).__init__(name=name)
-        self._dirname = dirname
+        if dirname is None:
+            config.error("directory name could not be empty")
         self._ext = ext
 
     def reconfigService(self, name, dirname, ext=None):
-        super(SecretInAFile, self).__init__(name=name)
         self._dirname = dirname
         self._ext = ext
 
