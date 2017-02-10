@@ -1,11 +1,17 @@
 from __future__ import absolute_import
 from __future__ import print_function
 
+import mock
+
+from twisted.internet import defer
 from twisted.trial import unittest
 
+from buildbot.config import MasterConfig
 from buildbot.process.properties import Interpolate
 from buildbot.secrets.provider.base import SecretProviderBase
+from buildbot.secrets.secret import SecretDetails
 from buildbot.test.fake import fakemaster
+from buildbot.test.fake.fakebuild import FakeBuild
 
 
 class FakeSecretStorage(SecretProviderBase):
@@ -20,13 +26,40 @@ class FakeSecretStorage(SecretProviderBase):
             return None, None
 
 
+class FakeBuildWithMaster(FakeBuild):
+
+    def __init__(self, master):
+        super(FakeBuildWithMaster, self).__init__()
+        self.master = master
+
+class FakeService(object):
+
+    def __init__(self, dictprop):
+        self.dict = dictprop
+
+    def get(self, key):
+        return SecretDetails("FakeService", key, self.dict[key])
+
+class FakeServiceManager(object):
+
+    def __init__(self, dictionary):
+        self.dictionary = dictionary
+
+    def __getitem__(self, dictionary):
+        return FakeService(self.dictionary)
+
 class TestInterpolateSecrets(unittest.TestCase):
 
     def setUp(self):
         self.master = fakemaster.make_master()
         self.master.config.secretsManagers = [FakeSecretStorage({"foo": "bar",
                                                                  "other": "value"})]
+        self.master.namedServices = FakeServiceManager({"foo": "bar",
+                                                        "other": "value"})
+        self.build = FakeBuildWithMaster(self.master)
 
-    def testInterpolate(self):
-        secrets = Interpolate('echo %(secrets:foo)s')
-        print("secrets:", secrets)
+    @defer.inlineCallbacks
+    def test_secret(self):
+        command = Interpolate("echo %(secrets:foo)s")
+        rendered = yield self.build.render(command)
+        self.assertEqual(rendered, "echo bar")

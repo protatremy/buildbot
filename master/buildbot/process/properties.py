@@ -159,7 +159,7 @@ class Properties(util.ComparableMixin):
         return defer.maybeDeferred(renderable.getRenderingFor, self)
 
 
-class PropertiesMixin:
+class PropertiesMixin(object):
 
     """
     A mixin to add L{IProperties} methods to a class which does not implement
@@ -424,8 +424,8 @@ class _SecretRenderer(object):
 
     def getRenderingFor(self, build):
         credsservice = build.getBuild().master.namedServices['secrets']
-        return credsservice.get(self.secret_name)
-
+        secret_detail = credsservice.get(self.secret_name)
+        return secret_detail.value
 
 class _SecretIndexer(object):
 
