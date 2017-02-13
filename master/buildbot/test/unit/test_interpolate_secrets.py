@@ -12,6 +12,7 @@ from buildbot.secrets.provider.base import SecretProviderBase
 from buildbot.secrets.secret import SecretDetails
 from buildbot.test.fake import fakemaster
 from buildbot.test.fake.fakebuild import FakeBuild
+from buildbot.test.util.config import ConfigErrorsMixin
 
 
 class FakeSecretStorage(SecretProviderBase):
@@ -32,13 +33,18 @@ class FakeBuildWithMaster(FakeBuild):
         super(FakeBuildWithMaster, self).__init__()
         self.master = master
 
+
 class FakeService(object):
 
     def __init__(self, dictprop):
         self.dict = dictprop
 
     def get(self, key):
-        return SecretDetails("FakeService", key, self.dict[key])
+        if key in self.dict:
+            return SecretDetails("FakeService", key, self.dict[key])
+        else:
+            return SecretDetails("FakeService", key, None)
+
 
 class FakeServiceManager(object):
 
@@ -48,7 +54,7 @@ class FakeServiceManager(object):
     def __getitem__(self, dictionary):
         return FakeService(self.dictionary)
 
-class TestInterpolateSecrets(unittest.TestCase):
+class TestInterpolateSecrets(unittest.TestCase, ConfigErrorsMixin):
 
     def setUp(self):
         self.master = fakemaster.make_master()
@@ -63,3 +69,9 @@ class TestInterpolateSecrets(unittest.TestCase):
         command = Interpolate("echo %(secrets:foo)s")
         rendered = yield self.build.render(command)
         self.assertEqual(rendered, "echo bar")
+
+    @defer.inlineCallbacks
+    def test_secret_not_found(self):
+        command = Interpolate("echo %(secrets:fuo)s")
+        rendered = yield self.build.render(command)
+        self.assertEqual(rendered, "echo ")
