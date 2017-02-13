@@ -20,6 +20,7 @@ from __future__ import absolute_import
 from __future__ import print_function
 
 import hvac
+
 from buildbot import config
 from buildbot.secrets.provider.base import SecretProviderBase
 
@@ -32,14 +33,15 @@ class SecretInVault(SecretProviderBase):
 
     def checkConfig(self, vaultServer=None, vaultToken=None):
         if not isinstance(vaultServer, str):
-            config.error("vaultServer must be a string while it is %r" % (type(vaultServer,)))
+            config.error("vaultServer must be a string while it is %s" % (type(vaultServer,)))
             return
         if not isinstance(vaultToken, str):
-            config.error("vaultToken must be a string while it is %d" % (type(vaultToken,)))
+            config.error("vaultToken must be a string while it is %s" % (type(vaultToken,)))
             return
         self.vaultServer = vaultServer
         self.token = vaultToken
         self.client = hvac.Client(url=vaultServer, token=vaultToken)
+        print("[debug] self.client:", self.client)
 
     def reconfigService(self, vaultServer=None, vaultToken=None):
         self.vaultServer = vaultServer
@@ -55,18 +57,4 @@ class SecretInVault(SecretProviderBase):
             raise ValueError('No data value in Vault secrets')
         if "value" not in secret["data"].keys():
             raise ValueError("No value for Vault secret")
-        return secret["data"]["value"], None
-
-    def create(self, entry, secret):
-        """
-        set the secret value in vault secret backend
-        """
-        secretkey = 'secret/' + entry
-        self.client.write(secretkey, password=secret)
-        return entry, None
-
-    def delete(self, entry):
-        """
-        Delete the value of an entry in the secret vault backend
-        """
-        self.client.delete('secret/' + entry)
+        return secret["data"]["value"]
