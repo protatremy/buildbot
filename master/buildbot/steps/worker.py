@@ -249,8 +249,10 @@ class CompositeStepMixin():
         d = self.runCommand(cmd)
 
         def commandComplete(cmd):
+            print("[DEBUG] in command complet")
             if abandonOnFailure and cmd.didFail():
                 raise buildstep.BuildStepFailed()
+            print("[DEBUG] will return cmd", cmd)
             return evaluateCommand(cmd)
 
         d.addCallback(lambda res: commandComplete(cmd))
@@ -313,3 +315,29 @@ class CompositeStepMixin():
                                      abandonOnFailure=abandonOnFailure,
                                      evaluateCommand=commandComplete)
     deprecatedWorkerClassMethod(locals(), getFileContentFromWorker)
+
+    def downloadFileContentToWorker(self, workerdest, strfile, abandonOnFailure=False):
+        self.checkWorkerHasCommand("downloadFile")
+        fileReader = remotetransfer.FileReader(strfile)
+
+        # default arguments
+        args = {
+            'maxsize': None,
+            'reader': fileReader,
+            'blocksize': 32 * 1024,
+        }
+
+        if self.workerVersionIsOlderThan('downloadFile', '3.0'):
+            args['slavedest'] = workerdest
+        else:
+            args['workerdest'] = workerdest
+
+        def commandComplete(cmd):
+            if cmd.didFail():
+                print("cmd.didFail")
+                return None
+            return fileReader.buffer
+
+        return self.runRemoteCommand('downloadFile', args,
+                                     abandonOnFailure=abandonOnFailure,
+                                     evaluateCommand=commandComplete)

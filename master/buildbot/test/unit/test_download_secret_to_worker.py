@@ -21,14 +21,17 @@ import os
 from twisted.python.filepath import FilePath
 from twisted.trial import unittest
 
+from buildbot.process import remotetransfer
 from buildbot.process.results import SUCCESS
-from buildbot.steps.push_secret_to_worker import PushSecretToWorker
+from buildbot.steps.push_secret_to_worker import DownloadSecretsToWorker
 from buildbot.steps.push_secret_to_worker import RemoveWorkerFileSecret
+from buildbot.test.fake.remotecommand import Expect
+from buildbot.test.fake.remotecommand import ExpectRemoteRef
 from buildbot.test.util import config as configmixin
 from buildbot.test.util import steps
 
 
-class TestPushSecretToWorkerStep(steps.BuildStepMixin, unittest.TestCase, configmixin.ConfigErrorsMixin):
+class TestDownloadSecretToWorkerStep(steps.BuildStepMixin, unittest.TestCase, configmixin.ConfigErrorsMixin):
 
     def createTempDir(self, dirname):
         tempdir = FilePath(self.mktemp())
@@ -39,15 +42,55 @@ class TestPushSecretToWorkerStep(steps.BuildStepMixin, unittest.TestCase, config
         self.temp_path = self.createTempDir("tempdir")
 
     def testPushSecretToWorkerStepSuccess(self):
-        self.setupStep(PushSecretToWorker([(os.path.join(self.temp_path, "pathA"), "something")]))
+        self.setupStep(DownloadSecretsToWorker([(os.path.join(self.temp_path, "pathA"), "something")]))
         self.expected_remote_commands = ""
         self.exp_result = SUCCESS
         self.runStep()
 
     def testPathDoesNotExists(self):
         self.assertRaises(ValueError,
-                          lambda: self.setupStep(PushSecretToWorker([(os.path.join("/dir/pathA"),
+                          lambda: self.setupStep(DownloadSecretsToWorker([(os.path.join("/dir/pathA"),
                                                                     "something")])))
+
+
+class TestDownloadFileSecretToWorker(steps.BuildStepMixin, unittest.TestCase):
+
+    def setUp(self):
+        tempdir = FilePath(self.mktemp())
+        tempdir.createDirectory()
+        self.temp_path = tempdir.path
+        return self.setUpBuildStep()
+
+    def tearDown(self):
+        return self.tearDownBuildStep()
+
+    def testBasic(self):
+        self.setupStep(
+            DownloadSecretsToWorker([((os.path.join(self.temp_path, "pathA"), "something", )),
+                                     ((os.path.join(self.temp_path, "pathB")), "something more")]))
+        # A place to store what gets read
+        # read = []
+        args1 = {
+                    'maxsize': None,
+                    'reader': ExpectRemoteRef(remotetransfer.FileReader),
+                    'blocksize': 32 * 1024,
+                    'workerdest': os.path.join(self.temp_path, "pathA")
+                    }
+        args2 = {
+                    'maxsize': None,
+                    'reader': ExpectRemoteRef(remotetransfer.FileReader),
+                    'blocksize': 32 * 1024,
+                    'workerdest': os.path.join(self.temp_path, "pathB")
+                    }
+        self.expectCommands(
+            Expect('downloadFile', args1),
+            Expect('downloadFile', args2),
+            )
+
+        self.expectOutcome(
+            result=SUCCESS, state_string="finished")
+        d = self.runStep()
+        return d
 
 
 class TestRemoveSecretToWorkerStep(steps.BuildStepMixin, unittest.TestCase,
