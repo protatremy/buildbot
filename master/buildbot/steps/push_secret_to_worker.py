@@ -63,18 +63,29 @@ class DownloadSecretsToWorker(_TransferBuildStep, CompositeStepMixin):
         yield self.finished(res)
 
 
-class RemoveWorkerFileSecret(BuildStep):
+class RemoveWorkerFileSecret(_TransferBuildStep, CompositeStepMixin):
 
-    def __init__(self, paths, **kwargs):
+    def __init__(self, paths, logEnviron=False, **kwargs):
         self.paths = paths
+        self.logEnviron = logEnviron
         super(RemoveWorkerFileSecret, self).__init__(**kwargs)
 
+    @defer.inlineCallbacks
     def runRemoveWorkerFileSecret(self):
+        all_results = []
+        print("[DEBUG] self.paths:", self.paths)
         for path in self.paths:
-            if not os.path.exists(path):
-                raise ValueError("Path %s does not exist")
-            os.remove(path)
-        return SUCCESS
+            print("[DEBUG] AAAAAAAAAAAAAAAAAAAAAA:", path)
+            res = yield self.runRmdir(path)
+            print("[DEBUG] APPEND:", path)
+            all_results.append(res)
+        if FAILURE in all_results:
+            result = FAILURE
+        else:
+            result = SUCCESS
+        defer.returnValue(result)
 
-    def run(self):
-        return self.runRemoveWorkerFileSecret()
+    @defer.inlineCallbacks
+    def start(self):
+        res = yield self.runRemoveWorkerFileSecret()
+        yield self.finished(res)

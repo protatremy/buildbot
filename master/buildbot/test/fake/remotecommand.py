@@ -73,6 +73,7 @@ class FakeRemoteCommand(object):
 
     def results(self):
         if self.rc in self.decodeRC:
+            print("[DEBUG] in self.results:", self.results)
             return self.decodeRC[self.rc]
         return FAILURE
 

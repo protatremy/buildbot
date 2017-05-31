@@ -403,6 +403,8 @@ class BuildStepMixin(object):
 
             # first check any ExpectedRemoteReference instances
             exp_tup = (exp.remote_command, exp.args)
+            print("[DEBUG] exp_tup:", exp_tup)
+            print("[DEBUG] got:", got)
             if exp_tup != got:
                 _describe_cmd_difference(exp, command)
                 raise AssertionError(

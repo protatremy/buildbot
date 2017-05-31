@@ -474,6 +474,24 @@ class TestCompositeStepMixin(steps.BuildStepMixin, unittest.TestCase):
         self.assertEqual(dummy, 'dummy')
         method.assert_called_once_with('file')
 
+    def test_downloadFileContentToWorker(self):
+        @defer.inlineCallbacks
+        def testFunc(x):
+            res = yield x.downloadFileContentToWorker("/path/dest1", "file text")
+            self.assertEqual(res, None)
+
+        exp_args = {'maxsize': None,
+                    'reader': ExpectRemoteRef(remotetransfer.FileReader),
+                    'blocksize': 32768,
+                    'workerdest': '/path/dest1'}
+
+        self.setupStep(CompositeUser(testFunc))
+        self.expectCommands(
+            Expect('downloadFile', exp_args)
+        )
+        self.expectOutcome(result=SUCCESS)
+        return self.runStep()
+
 
 class TestWorkerTransition(unittest.TestCase):
 

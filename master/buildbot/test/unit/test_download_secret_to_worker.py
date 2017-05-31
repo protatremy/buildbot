@@ -113,3 +113,40 @@ class TestRemoveSecretToWorkerStep(steps.BuildStepMixin, unittest.TestCase,
         self.expected_remote_commands = ""
         self.exp_result = SUCCESS
         self.runStep()
+
+
+class TestRemoveFileSecretToWorkerStep(steps.BuildStepMixin, unittest.TestCase,
+                                   configmixin.ConfigErrorsMixin):
+
+    def setUp(self):
+        tempdir = FilePath(self.mktemp())
+        tempdir.createDirectory()
+        self.temp_path = tempdir.path
+        return self.setUpBuildStep()
+
+    def tearDown(self):
+        return self.tearDownBuildStep()
+
+    def testBasic(self):
+        self.setupStep(
+            RemoveWorkerFileSecret([(os.path.join(self.temp_path, "pathA")),
+                                    (os.path.join(self.temp_path, "pathB"))]))
+        # A place to store what gets read
+        # read = []
+        args1 = {
+                    'dir': os.path.join(self.temp_path, "pathA"),
+                    'logEnviron': False
+                    }
+        args2 = {
+                    'dir': os.path.join(self.temp_path, "pathB"),
+                    'logEnviron': False
+                    }
+        self.expectCommands(
+            Expect('rmdir', args1),
+            # Expect('rmdir', args2),
+            )
+
+        self.expectOutcome(
+            result=SUCCESS, state_string="finished")
+        d = self.runStep()
+        return d
