@@ -249,12 +249,8 @@ class CompositeStepMixin():
         d = self.runCommand(cmd)
 
         def commandComplete(cmd):
-            print("[DEBUG] in command complet")
             if abandonOnFailure and cmd.didFail():
-                print("[DEBUG abandonOnFailure:]", abandonOnFailure)
-                print("[DEBUG] cmd.didFail()", cmd.didFail())
                 raise buildstep.BuildStepFailed()
-            print("[DEBUG] will return cmd", cmd)
             return evaluateCommand(cmd)
 
         d.addCallback(lambda res: commandComplete(cmd))
@@ -265,7 +261,6 @@ class CompositeStepMixin():
         cmd_args = {'dir': dir, 'logEnviron': self.logEnviron}
         if timeout:
             cmd_args['timeout'] = timeout
-        print("[DEBUG] in runRmdir")
         return self.runRemoteCommand('rmdir', cmd_args, **kwargs)
 
     def pathExists(self, path):

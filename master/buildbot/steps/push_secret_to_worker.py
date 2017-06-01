@@ -73,11 +73,8 @@ class RemoveWorkerFileSecret(_TransferBuildStep, CompositeStepMixin):
     @defer.inlineCallbacks
     def runRemoveWorkerFileSecret(self):
         all_results = []
-        print("[DEBUG] self.paths:", self.paths)
         for path in self.paths:
-            print("[DEBUG] AAAAAAAAAAAAAAAAAAAAAA:", path)
-            res = yield self.runRmdir(path)
-            print("[DEBUG] APPEND:", path)
+            res = yield self.runRmdir(path, abandonOnFailure=False)
             all_results.append(res)
         if FAILURE in all_results:
             result = FAILURE

@@ -143,7 +143,7 @@ class TestRemoveFileSecretToWorkerStep(steps.BuildStepMixin, unittest.TestCase,
                     }
         self.expectCommands(
             Expect('rmdir', args1),
-            # Expect('rmdir', args2),
+            Expect('rmdir', args2),
             )
 
         self.expectOutcome(
