@@ -74,7 +74,7 @@ class RemoveWorkerFileSecret(_TransferBuildStep, CompositeStepMixin):
     def runRemoveWorkerFileSecret(self):
         all_results = []
         for path in self.paths:
-            res = yield self.runRmdir(path, abandonOnFailure=False)
+            res = yield self.runRmFile(path, abandonOnFailure=False)
             all_results.append(res)
         if FAILURE in all_results:
             result = FAILURE

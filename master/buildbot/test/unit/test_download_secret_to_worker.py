@@ -23,15 +23,16 @@ from twisted.trial import unittest
 
 from buildbot.process import remotetransfer
 from buildbot.process.results import SUCCESS
-from buildbot.steps.push_secret_to_worker import DownloadSecretsToWorker
-from buildbot.steps.push_secret_to_worker import RemoveWorkerFileSecret
+from buildbot.steps.download_secret_to_worker import DownloadSecretsToWorker
+from buildbot.steps.download_secret_to_worker import RemoveWorkerFileSecret
 from buildbot.test.fake.remotecommand import Expect
 from buildbot.test.fake.remotecommand import ExpectRemoteRef
 from buildbot.test.util import config as configmixin
 from buildbot.test.util import steps
 
 
-class TestDownloadSecretToWorkerStep(steps.BuildStepMixin, unittest.TestCase, configmixin.ConfigErrorsMixin):
+class TestDownloadSecretToWorkerStep(steps.BuildStepMixin, unittest.TestCase,
+                                     configmixin.ConfigErrorsMixin):
 
     def createTempDir(self, dirname):
         tempdir = FilePath(self.mktemp())
@@ -42,7 +43,8 @@ class TestDownloadSecretToWorkerStep(steps.BuildStepMixin, unittest.TestCase, co
         self.temp_path = self.createTempDir("tempdir")
 
     def testPushSecretToWorkerStepSuccess(self):
-        self.setupStep(DownloadSecretsToWorker([(os.path.join(self.temp_path, "pathA"), "something")]))
+        self.setupStep(DownloadSecretsToWorker([(os.path.join(self.temp_path, "pathA"),
+         "something")]))
         self.expected_remote_commands = ""
         self.exp_result = SUCCESS
         self.runStep()
@@ -50,7 +52,7 @@ class TestDownloadSecretToWorkerStep(steps.BuildStepMixin, unittest.TestCase, co
     def testPathDoesNotExists(self):
         self.assertRaises(ValueError,
                           lambda: self.setupStep(DownloadSecretsToWorker([(os.path.join("/dir/pathA"),
-                                                                    "something")])))
+                                                                           "something")])))
 
 
 class TestDownloadFileSecretToWorker(steps.BuildStepMixin, unittest.TestCase):
@@ -68,8 +70,6 @@ class TestDownloadFileSecretToWorker(steps.BuildStepMixin, unittest.TestCase):
         self.setupStep(
             DownloadSecretsToWorker([((os.path.join(self.temp_path, "pathA"), "something", )),
                                      ((os.path.join(self.temp_path, "pathB")), "something more")]))
-        # A place to store what gets read
-        # read = []
         args1 = {
                     'maxsize': None,
                     'reader': ExpectRemoteRef(remotetransfer.FileReader),
@@ -83,8 +83,10 @@ class TestDownloadFileSecretToWorker(steps.BuildStepMixin, unittest.TestCase):
                     'workerdest': os.path.join(self.temp_path, "pathB")
                     }
         self.expectCommands(
-            Expect('downloadFile', args1),
-            Expect('downloadFile', args2),
+            Expect('downloadFile', args1)
+            + 0,
+            Expect('downloadFile', args2)
+            + 0,
             )
 
         self.expectOutcome(
@@ -131,19 +133,19 @@ class TestRemoveFileSecretToWorkerStep(steps.BuildStepMixin, unittest.TestCase,
         self.setupStep(
             RemoveWorkerFileSecret([(os.path.join(self.temp_path, "pathA")),
                                     (os.path.join(self.temp_path, "pathB"))]))
-        # A place to store what gets read
-        # read = []
         args1 = {
-                    'dir': os.path.join(self.temp_path, "pathA"),
+                    'path': os.path.join(self.temp_path, "pathA"),
                     'logEnviron': False
                     }
         args2 = {
-                    'dir': os.path.join(self.temp_path, "pathB"),
+                    'path': os.path.join(self.temp_path, "pathB"),
                     'logEnviron': False
                     }
         self.expectCommands(
-            Expect('rmdir', args1),
-            Expect('rmdir', args2),
+            Expect('rmfile', args1)
+            + 0,
+            Expect('rmfile', args2)
+            + 0,
             )
 
         self.expectOutcome(

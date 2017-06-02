@@ -263,6 +263,13 @@ class CompositeStepMixin():
             cmd_args['timeout'] = timeout
         return self.runRemoteCommand('rmdir', cmd_args, **kwargs)
 
+    def runRmFile(self, path, timeout=None, **kwargs):
+        """ remove a file from the worker """
+        cmd_args = {'path': path, 'logEnviron': self.logEnviron}
+        if timeout:
+            cmd_args['timeout'] = timeout
+        return self.runRemoteCommand('rmfile', cmd_args, **kwargs)
+
     def pathExists(self, path):
         """ test whether path exists"""
         def commandComplete(cmd):
@@ -333,7 +340,7 @@ class CompositeStepMixin():
         def commandComplete(cmd):
             if cmd.didFail():
                 return None
-            return fileReader.buffer
+            return fileReader
 
         return self.runRemoteCommand('downloadFile', args,
                                      abandonOnFailure=abandonOnFailure,

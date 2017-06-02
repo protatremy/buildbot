@@ -344,6 +344,15 @@ class TestCompositeStepMixin(steps.BuildStepMixin, unittest.TestCase):
         yield self.runStep()
         self.assertTrue(testFunc.ran)
 
+    def test_rmfile(self):
+        self.setupStep(CompositeUser(lambda x: x.runRmFile("d")))
+        self.expectCommands(
+            Expect('rmfile', {'path': 'd', 'logEnviron': False})
+            + 0
+        )
+        self.expectOutcome(result=SUCCESS)
+        return self.runStep()
+
     def test_mkdir(self):
         self.setupStep(CompositeUser(lambda x: x.runMkdir("d")))
         self.expectCommands(

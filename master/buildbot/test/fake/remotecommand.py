@@ -73,7 +73,6 @@ class FakeRemoteCommand(object):
 
     def results(self):
         if self.rc in self.decodeRC:
-            print("[RESULT] self.results:", self.results)
             return self.decodeRC[self.rc]
         return FAILURE
 
@@ -199,7 +198,6 @@ class Expect(object):
         """
         Implement the given behavior.  Returns a Deferred.
         """
-        print("[runBehavior] runBehavior")
         if behavior == 'rc':
             command.rc = args[0]
             d = defer.succeed(None)
