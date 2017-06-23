@@ -4,11 +4,11 @@ from __future__ import print_function
 from twisted.internet import defer
 from twisted.trial import unittest
 
+from buildbot.process.properties import Secret
 from buildbot.secrets.manager import SecretManager
 from buildbot.test.fake import fakemaster
 from buildbot.test.fake.fakebuild import FakeBuild
 from buildbot.test.fake.secrets import FakeSecretStorage
-from buildbot.test.util.config import ConfigErrorsMixin
 from buildbot.util.service import BuildbotService
 
 
@@ -22,16 +22,15 @@ class FakeBuildWithMaster(FakeBuild):
 class FakeServiceUsingSecrets(BuildbotService):
 
     name = "FakeServiceUsingSecrets"
-    render_secrets = ["secret_to_render"]
 
-    @defer.inlineCallbacks
-    def reconfigService(self, secret):
-        self.secret_to_render = secret
-        yield self.configureService()
+    def reconfigService(self, *args, **kwargs):
+        self.kwargs = kwargs
+        print("[DEBUG] kwargs in fake service", self.kwargs)
 
     def returnRenderedSecrets(self, secretKey):
         try:
-            return getattr(self, secretKey)
+            print("return")
+            # return self.kwargs[secretKey]
         except Exception:
             raise Exception
 
@@ -44,21 +43,31 @@ class TestRenderSecrets(unittest.TestCase):
         fakeStorageService.reconfigService(secretdict={"foo": "bar",
                                                        "other": "value"})
         self.secretsrv = SecretManager()
+        self.buildbotservice_m = SecretManager()
         self.secretsrv.services = [fakeStorageService]
         self.secretsrv.setServiceParent(self.master)
-        self.srvtest = FakeServiceUsingSecrets(["foo", "other"])
+        self.srvtest = FakeServiceUsingSecrets()
         self.srvtest.setServiceParent(self.master)
+        self.successResultOf(self.master.startService())
+
+    @defer.inlineCallbacks
+    def tearDown(self):
+        yield self.srvtest.stopService()
+        yield self.secretsrv.stopService()
 
     @defer.inlineCallbacks
     def test_secret_rendered(self):
-        yield self.srvtest.reconfigService(["foo", "other"])
+        print("[DEBUG] beuytuyt")
+
+        yield self.srvtest.reconfigService(secret=Secret("foo"))
+        self.master.reconfigServiceWithBuildbotConfig()
         self.assertEqual("bar", self.srvtest.returnRenderedSecrets("foo"))
 
     @defer.inlineCallbacks
     def test_secret_rendered_not_found(self):
-        yield self.assertFailure(self.srvtest.reconfigService(["more"]), KeyError)
+        yield self.assertFailure(self.srvtest.reconfigService(secret=Secret("more")), KeyError)
 
     @defer.inlineCallbacks
     def test_secret_render_no_secretkey(self):
-        yield self.srvtest.reconfigService(["foo", "other"])
+        yield self.srvtest.reconfigService(secret=Secret("foo"))
         self.assertRaises(Exception, self.srvtest.returnRenderedSecrets, "more")

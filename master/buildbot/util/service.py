@@ -28,6 +28,7 @@ from twisted.python import reflect
 from twisted.python.reflect import accumulateClassList
 
 from buildbot import util
+from buildbot.process.properties import Properties
 from buildbot.process.properties import PropertiesMixin
 from buildbot.process.properties import Secret
 from buildbot.util import ascii2unicode
@@ -183,6 +184,7 @@ class BuildbotService(AsyncMultiService, config.ConfiguredMixin, util.Comparable
                 "%s: must pass a name to constructor" % type(self))
         self._config_args = args
         self._config_kwargs = kwargs
+        print("[DEBUG] Config kwargs:", kwargs)
         self.rendered = False
         AsyncMultiService.__init__(self)
 
@@ -198,25 +200,28 @@ class BuildbotService(AsyncMultiService, config.ConfiguredMixin, util.Comparable
         # sibling == self is using ComparableMixin's implementation
         # only compare compare_attrs
         if self.configured and sibling == self:
+            print("return succeed")
             return defer.succeed(None)
         self.configured = True
+        # render renderables in parallel
+        p = Properties()
+        print("[DEBUG] Properties:", p)
+        p.master = self.master
+        print("[DEBUG] master:", p.master)
+        kwargs = {}
+        print("[DEBUG] sibling:", dict(sibling))
+        print("[DEBUG] sibling._config_kwargs:", sibling._config_kwargs)
+        for k, v in sibling._config_kwargs:
+            print("[DEBUG] v:", v)
+            value = p.render(v)
+            print("[DEBUG] value:", value)
+            kwargs.update({k: value})
         return self.reconfigService(*sibling._config_args,
-                                    **sibling._config_kwargs)
+                                    **kwargs)
 
     @defer.inlineCallbacks
     def configureService(self):
-        # render renderables in parallel
-        render_secrets = []
-        accumulateClassList(self.__class__, 'render_secrets', render_secrets)
-
-        def setRenderableSecret(res, attr):
-            setattr(self, attr, res)
-
-        for r_secret in render_secrets:
-            for secretkey in getattr(self, r_secret):
-                res_value = yield Secret(secretkey).getRenderingFor(self.master)
-                setRenderableSecret(res_value, secretkey)
-        self.rendered = True
+        print("[DEBUG] configure service")
         # reconfigServiceWithSibling with self, means first configuration
         d = yield self.reconfigServiceWithSibling(self)
         defer.returnValue(d)

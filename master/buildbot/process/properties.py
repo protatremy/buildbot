@@ -69,6 +69,16 @@ class Properties(util.ComparableMixin):
         if kwargs:
             self.update(kwargs, "TEST")
 
+    @property
+    def master(self):
+        if self.build is not None:
+            return self.build.master
+        return self._master
+
+    @master.setter
+    def master(self, value):
+        self._master = value
+
     @classmethod
     def fromDict(cls, propDict):
         properties = cls()
