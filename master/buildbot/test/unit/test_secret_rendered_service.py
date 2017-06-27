@@ -18,32 +18,35 @@ class FakeBuildWithMaster(FakeBuild):
         super(FakeBuildWithMaster, self).__init__()
         self.master = master
 
-
 class FakeServiceUsingSecrets(BuildbotService):
 
     name = "FakeServiceUsingSecrets"
+    renderables = [Secret("foo")]
 
     def reconfigService(self, *args, **kwargs):
         self.kwargs = kwargs
-        print("[DEBUG] kwargs in fake service", self.kwargs)
 
     def returnRenderedSecrets(self, secretKey):
         try:
-            print("return")
-            # return self.kwargs[secretKey]
-        except Exception:
+            return getattr(self, secretKey)
+        except Exception as e:
+            print("[EXCEPTION] e!", str(e))
             raise Exception
+
+
+class FakeServiceUsingSecretsNotFound(FakeServiceUsingSecrets):
+
+    name = "FakeServiceUsingSecrets2"
+    renderables = [Secret("more")]
 
 
 class TestRenderSecrets(unittest.TestCase):
 
     def setUp(self):
         self.master = fakemaster.make_master()
-        fakeStorageService = FakeSecretStorage()
-        fakeStorageService.reconfigService(secretdict={"foo": "bar",
+        fakeStorageService = FakeSecretStorage(secretdict={"foo": "bar",
                                                        "other": "value"})
         self.secretsrv = SecretManager()
-        self.buildbotservice_m = SecretManager()
         self.secretsrv.services = [fakeStorageService]
         self.secretsrv.setServiceParent(self.master)
         self.srvtest = FakeServiceUsingSecrets()
@@ -52,22 +55,16 @@ class TestRenderSecrets(unittest.TestCase):
 
     @defer.inlineCallbacks
     def tearDown(self):
-        yield self.srvtest.stopService()
-        yield self.secretsrv.stopService()
+        yield self.master.stopService()
 
-    @defer.inlineCallbacks
     def test_secret_rendered(self):
-        print("[DEBUG] beuytuyt")
-
-        yield self.srvtest.reconfigService(secret=Secret("foo"))
-        self.master.reconfigServiceWithBuildbotConfig()
         self.assertEqual("bar", self.srvtest.returnRenderedSecrets("foo"))
 
     @defer.inlineCallbacks
     def test_secret_rendered_not_found(self):
-        yield self.assertFailure(self.srvtest.reconfigService(secret=Secret("more")), KeyError)
+        new = FakeServiceUsingSecretsNotFound()
+        yield self.srvtest.reconfigServiceWithSibling(new)
+        print("[DEBUG] ", self.srvtest.returnRenderedSecrets("more"))
 
-    @defer.inlineCallbacks
     def test_secret_render_no_secretkey(self):
-        yield self.srvtest.reconfigService(secret=Secret("foo"))
         self.assertRaises(Exception, self.srvtest.returnRenderedSecrets, "more")

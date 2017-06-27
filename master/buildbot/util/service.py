@@ -195,33 +195,30 @@ class BuildbotService(AsyncMultiService, config.ConfiguredMixin, util.Comparable
                 'args': self._config_args,
                 'kwargs': self._config_kwargs}
 
+    @defer.inlineCallbacks
     def reconfigServiceWithSibling(self, sibling):
         # only reconfigure if sibling is configured differently.
         # sibling == self is using ComparableMixin's implementation
         # only compare compare_attrs
         if self.configured and sibling == self:
-            print("return succeed")
-            return defer.succeed(None)
+            defer.returnValue(None)
         self.configured = True
         # render renderables in parallel
         p = Properties()
-        print("[DEBUG] Properties:", p)
         p.master = self.master
-        print("[DEBUG] master:", p.master)
-        kwargs = {}
-        print("[DEBUG] sibling:", dict(sibling))
-        print("[DEBUG] sibling._config_kwargs:", sibling._config_kwargs)
-        for k, v in sibling._config_kwargs:
-            print("[DEBUG] v:", v)
-            value = p.render(v)
-            print("[DEBUG] value:", value)
-            kwargs.update({k: value})
-        return self.reconfigService(*sibling._config_args,
-                                    **kwargs)
+        # render renderables in parallel
+        renderables = []
+        accumulateClassList(self.__class__, 'renderables', renderables)
+        for renderable in renderables:
+            value = yield p.render(renderable)
+            print("[DEBUG] renderable secretKey!", renderable.secretKey)
+            setattr(self, renderable.secretKey, value)
+        d = yield self.reconfigService(*sibling._config_args,
+                                       **sibling._config_kwargs)
+        defer.returnValue(d)
 
     @defer.inlineCallbacks
     def configureService(self):
-        print("[DEBUG] configure service")
         # reconfigServiceWithSibling with self, means first configuration
         d = yield self.reconfigServiceWithSibling(self)
         defer.returnValue(d)
