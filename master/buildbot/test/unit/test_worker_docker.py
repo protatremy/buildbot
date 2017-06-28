@@ -133,7 +133,6 @@ class TestDockerLatentWorker(unittest.SynchronousTestCase):
             'bot', 'pass', 'tcp://1234:2375', 'worker', ['bin/bash'],
             volumes=[Interpolate('/data:/worker/%(kw:builder)s/build',
                                  builder=Property('builder'))])
-        print("[DEBUG] bs.builder:", Property('builder'))
         id, name = self.successResultOf(bs.start_instance(self.build))
         client = docker.Client.latest
         self.assertEqual(len(client.call_args_create_container), 1)

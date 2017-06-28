@@ -29,8 +29,6 @@ from twisted.python.reflect import accumulateClassList
 
 from buildbot import util
 from buildbot.process.properties import Properties
-from buildbot.process.properties import PropertiesMixin
-from buildbot.process.properties import Secret
 from buildbot.util import ascii2unicode
 from buildbot.util import config
 from buildbot.util import unicode2bytes
@@ -184,7 +182,6 @@ class BuildbotService(AsyncMultiService, config.ConfiguredMixin, util.Comparable
                 "%s: must pass a name to constructor" % type(self))
         self._config_args = args
         self._config_kwargs = kwargs
-        print("[DEBUG] Config kwargs:", kwargs)
         self.rendered = False
         AsyncMultiService.__init__(self)
 
@@ -208,11 +205,15 @@ class BuildbotService(AsyncMultiService, config.ConfiguredMixin, util.Comparable
         p.master = self.master
         # render renderables in parallel
         renderables = []
+        kwargs = {}
         accumulateClassList(self.__class__, 'renderables', renderables)
-        for renderable in renderables:
-            value = yield p.render(renderable)
-            print("[DEBUG] renderable secretKey!", renderable.secretKey)
-            setattr(self, renderable.secretKey, value)
+        for k, v in sibling._config_kwargs.items():
+            if k in renderables:
+                value = yield p.render(v)
+                setattr(self, k, value)
+                kwargs.update({k: value})
+            else:
+                kwargs.update({k: v})
         d = yield self.reconfigService(*sibling._config_args,
                                        **sibling._config_kwargs)
         defer.returnValue(d)

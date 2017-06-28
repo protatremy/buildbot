@@ -7,21 +7,14 @@ from twisted.trial import unittest
 from buildbot.process.properties import Secret
 from buildbot.secrets.manager import SecretManager
 from buildbot.test.fake import fakemaster
-from buildbot.test.fake.fakebuild import FakeBuild
 from buildbot.test.fake.secrets import FakeSecretStorage
 from buildbot.util.service import BuildbotService
 
 
-class FakeBuildWithMaster(FakeBuild):
-
-    def __init__(self, master):
-        super(FakeBuildWithMaster, self).__init__()
-        self.master = master
-
 class FakeServiceUsingSecrets(BuildbotService):
 
     name = "FakeServiceUsingSecrets"
-    renderables = [Secret("foo")]
+    renderables = ["foo", "bar", "secret"]
 
     def reconfigService(self, *args, **kwargs):
         self.kwargs = kwargs
@@ -29,15 +22,8 @@ class FakeServiceUsingSecrets(BuildbotService):
     def returnRenderedSecrets(self, secretKey):
         try:
             return getattr(self, secretKey)
-        except Exception as e:
-            print("[EXCEPTION] e!", str(e))
+        except Exception:
             raise Exception
-
-
-class FakeServiceUsingSecretsNotFound(FakeServiceUsingSecrets):
-
-    name = "FakeServiceUsingSecrets2"
-    renderables = [Secret("more")]
 
 
 class TestRenderSecrets(unittest.TestCase):
@@ -57,14 +43,15 @@ class TestRenderSecrets(unittest.TestCase):
     def tearDown(self):
         yield self.master.stopService()
 
+    @defer.inlineCallbacks
     def test_secret_rendered(self):
+        yield self.srvtest.configureService()
+        new = FakeServiceUsingSecrets(foo=Secret("foo"), other=Secret("other"))
+        yield self.srvtest.reconfigServiceWithSibling(new)
         self.assertEqual("bar", self.srvtest.returnRenderedSecrets("foo"))
 
     @defer.inlineCallbacks
     def test_secret_rendered_not_found(self):
-        new = FakeServiceUsingSecretsNotFound()
+        new = FakeServiceUsingSecrets(foo=Secret("foo"))
         yield self.srvtest.reconfigServiceWithSibling(new)
-        print("[DEBUG] ", self.srvtest.returnRenderedSecrets("more"))
-
-    def test_secret_render_no_secretkey(self):
         self.assertRaises(Exception, self.srvtest.returnRenderedSecrets, "more")

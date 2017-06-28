@@ -78,7 +78,6 @@ class Properties(util.ComparableMixin):
 
     @master.setter
     def master(self, value):
-        print("[DEBUG] ")
         self._master = value
 
     @classmethod
@@ -172,9 +171,7 @@ class Properties(util.ComparableMixin):
         return self.build
 
     def render(self, value):
-        print("[DEBUG] rendering value for:", value)
         renderable = IRenderable(value)
-        # print("[DEBUG] self.master:", self.master)
         return defer.maybeDeferred(renderable.getRenderingFor, self)
 
     # as the secrets are used in the renderable, they can pretty much arrive anywhere
@@ -478,7 +475,6 @@ class Secret(_SecretRenderer):
 
     @defer.inlineCallbacks
     def getRenderingFor(self, props):
-        print("[DEBUG] getRenderingFor Secret")
         secretsSrv = props.master.namedServices.get("secrets")
         if not secretsSrv:
             error_message = "secrets service not started, need to configure" \
@@ -486,9 +482,7 @@ class Secret(_SecretRenderer):
                             "in Interpolate"
             raise KeyError(error_message)
         credsservice = props.master.namedServices['secrets']
-        print("[DEBUG] credsservice:", credsservice)
         secret_detail = yield credsservice.get(self.secretKey)
-        print("[DEBUG] secret_detail:", secret_detail)
         if secret_detail is None:
             raise KeyError("secret key %s is not found in any provider" % self.secretKey)
         defer.returnValue(secret_detail.value)
@@ -633,7 +627,6 @@ class Interpolate(util.ComparableMixin, object):
         return _SourceStampDict(codebase), attr, repl
 
     def _parse_kw(self, arg):
-        print("[DEBUG] Interpolate kw")
         try:
             kw, repl = arg.split(":", 1)
         except ValueError:
@@ -915,7 +908,6 @@ class _ListRenderer(object):
         self.value = value
 
     def getRenderingFor(self, build):
-        print("[DEBUG] in getRenderingFor LIST:self.value:", self.value)
         return defer.gatherResults([build.render(e) for e in self.value])
 
 
