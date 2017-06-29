@@ -25,6 +25,7 @@ import json
 import re
 
 from buildbot.util import UTC
+from buildbot.util import bytes2NativeString
 
 # Base class
 
@@ -79,6 +80,11 @@ class StringValidator(InstanceValidator):
 class BinaryValidator(InstanceValidator):
     types = (bytes,)
     name = 'bytestring'
+
+
+class StrValidator(InstanceValidator):
+    types = (str,)
+    name = 'str'
 
 
 class DateTimeValidator(Validator):
@@ -257,10 +263,10 @@ class PatchValidator(Validator):
 
 class MessageValidator(Validator):
 
-    routingKeyValidator = TupleValidator(BinaryValidator())
+    routingKeyValidator = TupleValidator(StrValidator())
 
     def __init__(self, events, messageValidator):
-        self.events = set(events)
+        self.events = [bytes2NativeString(e) for e in set(events)]
         self.messageValidator = messageValidator
 
     def validate(self, name, routingKey_message):
@@ -376,7 +382,7 @@ dbdict['ssdict'] = DictValidator(
 message['builders'] = Selector()
 message['builders'].add(None,
                         MessageValidator(
-                            events=['started', 'stopped'],
+                            events=[b'started', b'stopped'],
                             messageValidator=DictValidator(
                                 builderid=IntValidator(),
                                 masterid=IntValidator(),
@@ -419,7 +425,7 @@ _buildset = dict(
     parent_buildid=NoneOk(IntValidator()),
     parent_relationship=NoneOk(StringValidator()),
 )
-_buildsetEvents = ['new', 'complete']
+_buildsetEvents = [b'new', b'complete']
 
 message['buildsets'] = Selector()
 message['buildsets'].add(lambda k: k[-1] == 'new',
@@ -462,7 +468,7 @@ dbdict['bsdict'] = DictValidator(
 message['buildrequests'] = Selector()
 message['buildrequests'].add(None,
                              MessageValidator(
-                                 events=['new', 'claimed', 'unclaimed'],
+                                 events=[b'new', b'claimed', b'unclaimed'],
                                  messageValidator=DictValidator(
                                      # TODO: probably wrong!
                                      brid=IntValidator(),
@@ -476,7 +482,7 @@ message['buildrequests'].add(None,
 message['changes'] = Selector()
 message['changes'].add(None,
                        MessageValidator(
-                           events=['new'],
+                           events=[b'new'],
                            messageValidator=DictValidator(
                                changeid=IntValidator(),
                                parent_changeids=ListValidator(IntValidator()),
@@ -529,6 +535,7 @@ dbdict['schedulerdict'] = DictValidator(
     id=IntValidator(),
     name=StringValidator(),
     masterid=NoneOk(IntValidator()),
+    enabled=BooleanValidator(),
 )
 
 # builds
@@ -546,7 +553,7 @@ _build = dict(
     state_string=StringValidator(),
     results=NoneOk(IntValidator()),
 )
-_buildEvents = ['new', 'complete']
+_buildEvents = [b'new', b'complete']
 
 message['builds'] = Selector()
 message['builds'].add(None,
@@ -591,7 +598,7 @@ _step = dict(
     urls=ListValidator(StringValidator()),
     hidden=BooleanValidator(),
 )
-_stepEvents = ['new', 'complete']
+_stepEvents = [b'new', b'complete']
 
 message['steps'] = Selector()
 message['steps'].add(None,
@@ -655,7 +662,7 @@ def verifyMessage(testcase, routingKey, message_):
     # the "type" of the message is identified by last path name
     # -1 being the event, and -2 the id.
 
-    validator = message[routingKey[-3]]
+    validator = message[bytes2NativeString(routingKey[-3])]
     _verify(testcase, validator, '',
             (routingKey, (routingKey, message_)))
 

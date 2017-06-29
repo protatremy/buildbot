@@ -149,6 +149,21 @@ class TestBuildStep(steps.BuildStepMixin, config.ConfigErrorsMixin, unittest.Tes
 
         self.assertTrue(renderedLocks[0])
 
+    def test_compare(self):
+        lbs1 = buildstep.LoggingBuildStep(name="me")
+        lbs2 = buildstep.LoggingBuildStep(name="me")
+        lbs3 = buildstep.LoggingBuildStep(name="me2")
+        self.assertEqual(lbs1, lbs2)
+        self.assertNotEqual(lbs1, lbs3)
+
+    def test_repr(self):
+        self.assertEqual(
+            repr(buildstep.LoggingBuildStep(name="me")),
+            'LoggingBuildStep(name=' + repr("me") + ')')
+        self.assertEqual(
+            repr(buildstep.LoggingBuildStep({}, name="me")),
+            'LoggingBuildStep({}, name=' + repr("me") + ')')
+
     @defer.inlineCallbacks
     def test_regularLocks(self):
         lock1 = mock.Mock(spec=locks.MasterLock)
@@ -534,9 +549,9 @@ class TestBuildStep(steps.BuildStepMixin, config.ConfigErrorsMixin, unittest.Tes
 
         # make sure appropriate exception is raised
         step = buildstep.BuildStep()
-        self.assertRaisesRegexp(WorkerTooOldError,
-                                "worker is too old, does not know about foo",
-                                step.checkWorkerHasCommand, "foo")
+        self.assertRaisesRegex(WorkerTooOldError,
+                               "worker is too old, does not know about foo",
+                               step.checkWorkerHasCommand, "foo")
 
     @defer.inlineCallbacks
     def testRunRaisesException(self):

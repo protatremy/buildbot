@@ -38,6 +38,7 @@ from buildbot.db import buildrequests
 from buildbot.db import changesources
 from buildbot.db import schedulers
 from buildbot.test.util import validation
+from buildbot.util import bytes2NativeString
 from buildbot.util import datetime2epoch
 from buildbot.util import service
 from buildbot.util import unicode2bytes
@@ -361,6 +362,7 @@ class Scheduler(Row):
         id=None,
         name='schname',
         name_hash=None,
+        enabled=1,
     )
 
     id_column = 'id'
@@ -1002,6 +1004,7 @@ class FakeSchedulersComponent(FakeDBComponent):
         self.scheduler_masters = {}
         self.states = {}
         self.classifications = {}
+        self.enabled = {}
 
     def insertTestData(self, rows):
         for row in rows:
@@ -1010,6 +1013,7 @@ class FakeSchedulersComponent(FakeDBComponent):
                 cls[row.changeid] = row.important
             if isinstance(row, Scheduler):
                 self.schedulers[row.id] = row.name
+                self.enabled[row.id] = True
             if isinstance(row, SchedulerMaster):
                 self.scheduler_masters[row.schedulerid] = row.masterid
 
@@ -1076,6 +1080,7 @@ class FakeSchedulersComponent(FakeDBComponent):
             rv = dict(
                 id=schedulerid,
                 name=self.schedulers[schedulerid],
+                enabled=self.enabled.get(schedulerid, True),
                 masterid=None)
             # only set masterid if the relevant scheduler master exists and
             # is active
@@ -1139,6 +1144,11 @@ class FakeSchedulersComponent(FakeDBComponent):
     def assertSchedulerMaster(self, schedulerid, masterid):
         self.t.assertEqual(self.scheduler_masters.get(schedulerid),
                            masterid)
+
+    def enable(self, schedulerid, v):
+        assert schedulerid in self.schedulers
+        self.enabled[schedulerid] = v
+        return defer.succeed((('control', 'schedulers', schedulerid, 'enable'), {'enabled': v}))
 
 
 class FakeSourceStampsComponent(FakeDBComponent):
@@ -1646,7 +1656,7 @@ class FakeStateComponent(FakeDBComponent):
 
     def atomicCreateState(self, objectid, name, thd_create_callback):
         value = thd_create_callback()
-        self.states[objectid][name] = json.dumps(value)
+        self.states[objectid][name] = json.dumps(bytes2NativeString(value))
         return defer.succeed(value)
 
     # fake methods

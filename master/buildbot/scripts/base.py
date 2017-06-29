@@ -67,7 +67,7 @@ def checkPidFile(pidfile):
                 os.remove(pidfile)
             else:
                 raise OSError("Can't check status of PID %s from pidfile %s: %s" %
-                              (pid, pidfile, why[1]))
+                              (pid, pidfile, why))
         else:
             raise BusyError("'%s' exists - is this master still running?")
 
@@ -240,8 +240,8 @@ class SubcommandOptions(usage.Options):
             here = next
             toomany -= 1  # just in case
             if toomany == 0:
-                print ("I seem to have wandered up into the infinite glories "
-                       "of the heavens. Oops.")
+                print("I seem to have wandered up into the infinite glories "
+                      "of the heavens. Oops.")
                 break
 
         searchpath.append(home)
